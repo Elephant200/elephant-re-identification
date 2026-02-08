@@ -1,2 +1,3 @@
-# elephant-re-identification
-Elephant re-identification using SEEK coding. Automatically generates SEEK coding for use in the field
+# Elephant Re-Identification with AI
+## Automatic generation of SEEK coding
+Please see [](github.com/Elephant200/elephant-identification) for an earlier iteration of this project.
