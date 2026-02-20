@@ -377,7 +377,3 @@ def segment_image_batch(
                 results.append(r["predictions"])
     
     return results
-
-
-with open("results.json", "w") as f:
-    json.dump(segment_image_batch(images=[1], queries=[" "]), f, indent=4)
