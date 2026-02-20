@@ -2,11 +2,11 @@
 Module wrapping the SAM3 Roboflow workflow.
 """
 
-import json
 import os
 from typing import Literal
-from inference_sdk import InferenceHTTPClient
+
 import numpy as np
+from inference_sdk import InferenceHTTPClient
 
 CLIENT = InferenceHTTPClient(
     api_url="https://serverless.roboflow.com",
@@ -15,6 +15,7 @@ CLIENT = InferenceHTTPClient(
 
 WORKSPACE_NAME = "elephant-re-id"
 WORKFLOW_ID = "sam3"
+BATCH_SIZE = 8
 
 
 def segment_image(
@@ -23,10 +24,7 @@ def segment_image(
         output_type: Literal["rle", "polygon"],
         force: bool = False
     ):
-    """
-    Segment an image using the SAM3 Roboflow workflow.
-
-    """
+    """Segment an image using the SAM3 Roboflow workflow."""
     response = CLIENT.run_workflow(
         workspace_name=WORKSPACE_NAME,
         workflow_id=WORKFLOW_ID,
@@ -34,45 +32,49 @@ def segment_image(
         parameters={"query": query},
         use_cache=not force,
     )
-    response = response[0]
-    if response:
-        return response["predictions"]
+    return response[0]["predictions"]
+
 
 def segment_image_batch(
         images: list[np.ndarray | str],
         queries: list[str],
-        output_type: Literal["rle", "polygon"] = "rle",
         force: bool = False
     ):
-    """
-    Segment a batch of images using the SAM3 Roboflow workflow.
+    """Segment a batch of images using the SAM3 Roboflow workflow.
+
+    Images are sent in batches of 8 to match the workflow's slot layout.
+
+    Args:
+        images: List of images to segment (paths or arrays).
+        queries: List of queries to use for segmentation.
+        force: Whether to bypass the workflow cache.
+
+    Returns:
+        List of prediction dicts, one per input image.
     """
     if len(images) != len(queries):
         raise ValueError("Images and queries must have the same length")
 
-    # Workflow uses batches of 8 images
-    BATCH_SIZE = 8
-    
-    # Split images into batches
-    batches = zip(
-        [images[i:i+BATCH_SIZE] for i in range(0, len(images), BATCH_SIZE)], 
-        [queries[i:i+BATCH_SIZE] for i in range(0, len(queries), BATCH_SIZE)],
-    )
-
+    total = len(images)
     results = []
-    for images, queries in batches:
+
+    for start in range(0, total, BATCH_SIZE):
+        batch_images = images[start:start + BATCH_SIZE]
+        batch_queries = queries[start:start + BATCH_SIZE]
+
+        images_dict = {f"image{i}": img for i, img in enumerate(batch_images)}
+        params_dict = {f"query{i}": q for i, q in enumerate(batch_queries)}
+
         response = CLIENT.run_workflow(
             workspace_name=WORKSPACE_NAME,
             workflow_id=WORKFLOW_ID,
-            images={"image0": images[0], "image1": images[1], "image2": images[2], "image3": images[3], "image4": images[4], "image5": images[5], "image6": images[6], "image7": images[7]},
-            parameters={"query0": queries[0], "query1": queries[1], "query2": queries[2], "query3": queries[3], "query4": queries[4], "query5": queries[5], "query6": queries[6], "query7": queries[7]},
+            images=images_dict,
+            parameters=params_dict,
             use_cache=not force,
         )
-        response = response[0]
-        if response:
-            for r in response.values():
-                results.append(r["predictions"])
-    
-    assert len(results) == len(images)
 
+        for key in sorted(response[0]):
+            results.append(response[0][key]["predictions"])
+
+    assert len(results) == len(images)
     return results
