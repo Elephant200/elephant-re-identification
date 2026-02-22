@@ -9,15 +9,19 @@ Supports two model backends:
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
 
 import cv2
 from pycocotools import mask as mask_util
+from tqdm import tqdm
 
 from roboflow.sam3 import segment_image
 from roboflow.model import infer
+
+logger = logging.getLogger(__name__)
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"}
 
@@ -97,82 +101,88 @@ def _annotate_with_sam3(
     images_list: list[dict] = []
     annotations: list[dict] = []
     annotation_id = 1
+    errors = 0
 
-    for image_index, image_path in enumerate(image_paths):
+    progress = tqdm(image_paths, desc="SAM3", unit="img")
+    for image_index, image_path in enumerate(progress):
         image_id = image_index + 1
         image_entry_added = False
         image_annotation_count = 0
 
-        # Query SAM3 once per category (category name = query prompt)
-        for category_name, category_id in category_name_to_id.items():
-            response = segment_image(
-                image_path, category_name, output_type="rle",
-            )
-            # segment_image returns {"image": {...}, "predictions": [...]}
-            predictions = response.get("predictions", [])
-
-            # Build image entry from the API response dimensions
-            # (avoids reading the file with cv2 just for width/height)
-            if not image_entry_added and "image" in response:
-                images_list.append({
-                    "id": image_id,
-                    "file_name": os.path.basename(image_path),
-                    "width": response["image"]["width"],
-                    "height": response["image"]["height"],
-                })
-                image_entry_added = True
-
-            for prediction in predictions:
-                has_rle = "rle_mask" in prediction
-                has_bbox = all(
-                    k in prediction for k in ("x", "y", "width", "height")
+        try:
+            # Query SAM3 once per category (category name = query prompt)
+            for category_name, category_id in category_name_to_id.items():
+                response = segment_image(
+                    image_path, category_name, output_type="rle",
                 )
-                if not has_rle and not has_bbox:
-                    continue
+                # segment_image returns {"image": {...}, "predictions": [...]}
+                predictions = response.get("predictions", [])
 
-                # Use the bbox from the prediction when available;
-                # only fall back to deriving it from the RLE mask
-                if has_bbox:
-                    bbox = _center_to_topleft(
-                        prediction["x"], prediction["y"],
-                        prediction["width"], prediction["height"],
+                # Build image entry from the API response dimensions
+                # (avoids reading the file with cv2 just for width/height)
+                if not image_entry_added and "image" in response:
+                    images_list.append({
+                        "id": image_id,
+                        "file_name": os.path.basename(image_path),
+                        "width": response["image"]["width"],
+                        "height": response["image"]["height"],
+                    })
+                    image_entry_added = True
+
+                for prediction in predictions:
+                    has_rle = "rle_mask" in prediction
+                    has_bbox = all(
+                        k in prediction
+                        for k in ("x", "y", "width", "height")
                     )
-                    area = prediction["width"] * prediction["height"]
-                else:
-                    rle = prediction["rle_mask"]
-                    bbox = mask_util.toBbox(rle).tolist()
-                    area = float(mask_util.area(rle))
+                    if not has_rle and not has_bbox:
+                        continue
 
-                annotation: dict = {
-                    "id": annotation_id,
-                    "image_id": image_id,
-                    "category_id": category_id,
-                    "bbox": bbox,
-                    "area": area,
-                    "iscrowd": 0,
-                }
+                    # Use the bbox from the prediction when available;
+                    # only fall back to deriving it from the RLE mask
+                    if has_bbox:
+                        bbox = _center_to_topleft(
+                            prediction["x"], prediction["y"],
+                            prediction["width"], prediction["height"],
+                        )
+                        area = prediction["width"] * prediction["height"]
+                    else:
+                        rle = prediction["rle_mask"]
+                        bbox = mask_util.toBbox(rle).tolist()
+                        area = float(mask_util.area(rle))
 
-                if has_rle:
-                    annotation["segmentation"] = _rle_to_json_safe(
-                        prediction["rle_mask"],
-                    )
+                    annotation: dict = {
+                        "id": annotation_id,
+                        "image_id": image_id,
+                        "category_id": category_id,
+                        "bbox": bbox,
+                        "area": area,
+                        "iscrowd": 0,
+                    }
 
-                annotations.append(annotation)
-                annotation_id += 1
-                image_annotation_count += 1
+                    if has_rle:
+                        annotation["segmentation"] = _rle_to_json_safe(
+                            prediction["rle_mask"],
+                        )
 
-        # Fallback: read dimensions from file if the API didn't provide them
-        if not image_entry_added:
-            image_entry = _make_image_entry(image_path, image_id)
-            if image_entry is not None:
-                images_list.append(image_entry)
-                image_entry_added = True
+                    annotations.append(annotation)
+                    annotation_id += 1
+                    image_annotation_count += 1
 
-        print(
-            f"  [{image_index + 1}/{len(image_paths)}] "
-            f"{os.path.basename(image_path)}: "
-            f"{image_annotation_count} annotations"
-        )
+            # Fallback: read dimensions from file if the API didn't provide them
+            if not image_entry_added:
+                image_entry = _make_image_entry(image_path, image_id)
+                if image_entry is not None:
+                    images_list.append(image_entry)
+
+        except Exception:
+            errors += 1
+            logger.exception("Failed to annotate %s", os.path.basename(image_path))
+
+        progress.set_postfix(annotations=len(annotations), errors=errors)
+
+    if errors:
+        logger.warning("Skipped %d images due to errors", errors)
 
     return images_list, annotations
 
@@ -195,63 +205,69 @@ def _annotate_with_roboflow_model(
     images_list: list[dict] = []
     annotations: list[dict] = []
     annotation_id = 1
+    errors = 0
 
-    for image_index, image_path in enumerate(image_paths):
+    progress = tqdm(image_paths, desc=model_id, unit="img")
+    for image_index, image_path in enumerate(progress):
         image_id = image_index + 1
-        image_entry = _make_image_entry(image_path, image_id)
-        if image_entry is None:
-            continue
-        images_list.append(image_entry)
-        height = image_entry["height"]
-        width = image_entry["width"]
-        image_annotation_count = 0
 
-        predictions = infer(
-            image_path, model_id, confidence=confidence, iou=iou,
-        )
-
-        for prediction in predictions:
-            # Match prediction class to a requested category
-            class_name = prediction.get("class", prediction.get("class_name"))
-            if class_name not in category_name_to_id:
+        try:
+            image_entry = _make_image_entry(image_path, image_id)
+            if image_entry is None:
+                logger.warning("Could not read %s, skipping", os.path.basename(image_path))
                 continue
+            images_list.append(image_entry)
+            height = image_entry["height"]
+            width = image_entry["width"]
 
-            # Every prediction must have a bounding box
-            if not all(
-                k in prediction for k in ("x", "y", "width", "height")
-            ):
-                continue
-
-            bbox = _center_to_topleft(
-                prediction["x"], prediction["y"],
-                prediction["width"], prediction["height"],
+            predictions = infer(
+                image_path, model_id, confidence=confidence, iou=iou,
             )
 
-            # Area comes directly from the prediction's bbox dimensions
-            annotation: dict = {
-                "id": annotation_id,
-                "image_id": image_id,
-                "category_id": category_name_to_id[class_name],
-                "bbox": bbox,
-                "area": prediction["width"] * prediction["height"],
-                "iscrowd": 0,
-            }
+            for prediction in predictions:
+                # Match prediction class to a requested category
+                class_name = prediction.get("class", prediction.get("class_name"))
+                if class_name not in category_name_to_id:
+                    continue
 
-            # Convert polygon segmentation to RLE when available
-            if "points" in prediction:
-                annotation["segmentation"] = _polygon_to_rle(
-                    prediction["points"], height, width,
+                # Every prediction must have a bounding box
+                if not all(
+                    k in prediction for k in ("x", "y", "width", "height")
+                ):
+                    continue
+
+                bbox = _center_to_topleft(
+                    prediction["x"], prediction["y"],
+                    prediction["width"], prediction["height"],
                 )
 
-            annotations.append(annotation)
-            annotation_id += 1
-            image_annotation_count += 1
+                # Area comes directly from the prediction's bbox dimensions
+                annotation: dict = {
+                    "id": annotation_id,
+                    "image_id": image_id,
+                    "category_id": category_name_to_id[class_name],
+                    "bbox": bbox,
+                    "area": prediction["width"] * prediction["height"],
+                    "iscrowd": 0,
+                }
 
-        print(
-            f"  [{image_index + 1}/{len(image_paths)}] "
-            f"{os.path.basename(image_path)}: "
-            f"{image_annotation_count} annotations"
-        )
+                # Convert polygon segmentation to RLE when available
+                if "points" in prediction:
+                    annotation["segmentation"] = _polygon_to_rle(
+                        prediction["points"], height, width,
+                    )
+
+                annotations.append(annotation)
+                annotation_id += 1
+
+        except Exception:
+            errors += 1
+            logger.exception("Failed to annotate %s", os.path.basename(image_path))
+
+        progress.set_postfix(annotations=len(annotations), errors=errors)
+
+    if errors:
+        logger.warning("Skipped %d images due to errors", errors)
 
     return images_list, annotations
 
@@ -281,7 +297,7 @@ def distill(
         iou: (Roboflow models only) IoU threshold for NMS.
     """
     image_paths = _scan_images(image_dir)
-    print(f"Found {len(image_paths)} images in {image_dir}")
+    logger.info("Found %d images in %s", len(image_paths), image_dir)
 
     # Build COCO categories list
     categories = [
@@ -317,9 +333,9 @@ def distill(
     with open(output_path, "w") as f:
         json.dump(coco, f, indent=2)
 
-    print(
-        f"Wrote {len(annotations)} annotations across "
-        f"{len(images_list)} images to {output_path}"
+    logger.info(
+        "Wrote %d annotations across %d images to %s",
+        len(annotations), len(images_list), output_path,
     )
 
 
@@ -328,6 +344,10 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s: %(message)s",
+    )
 
     parser = argparse.ArgumentParser(
         description="Auto-annotate images using a pretrained model.",
