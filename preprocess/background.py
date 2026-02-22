@@ -10,27 +10,6 @@ BG_CLIENT = InferenceHTTPClient(
     api_key=os.getenv("ROBOFLOW_API_KEY"),
 )
 
-
-def smooth_mask(mask: np.ndarray, kernel_size: int = 5) -> np.ndarray:
-    """
-    Keep only the largest connected component and close small holes via morphological closing.
-
-    Args:
-        mask: Binary mask as a numpy array.
-        kernel_size: Size of the kernel for morphological closing.
-
-    Returns:
-        The smoothed mask.
-    """
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    if num_labels <= 1:
-        return mask
-    largest = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
-    cleaned = (labels == largest).astype(np.uint8)
-    kernel = np.ones((kernel_size, kernel_size), np.uint8)
-    return cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel)
-
-
 def remove_background(image: np.ndarray) -> np.ndarray:
     """Remove the background from an elephant image using a SAM3 Roboflow workflow.
 
@@ -69,5 +48,5 @@ def remove_background(image: np.ndarray) -> np.ndarray:
         if mask_util.iou([body_merged], [tusk_merged], [0])[0, 0] > 0:
             body_merged = mask_util.merge([body_merged, tusk_merged], intersect=0)
 
-    mask = smooth_mask(mask_util.decode(body_merged))
+    mask = mask_util.decode(body_merged)
     return cv2.bitwise_and(image, image, mask=mask)
