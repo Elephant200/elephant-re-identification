@@ -3,5 +3,8 @@ python-dotenv
 torch
 torchvision
 rembg[cpu,cli]
-inference-sdk
 pycocotools
+
+inference
+inference-sdk
+roboflow
