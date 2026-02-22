@@ -1,0 +1,5 @@
+Type: YOLOv11 Keypoint Detection (Fast)
+Trained On: Partially Hand-Annotated
+Dataset Size: 855
+Test Set mAP@50: 55.1%
+Weight Location: model_weights/anchor_extraction_yolov11/weights.pt
