@@ -1,4 +1,0 @@
-Type: YOLO26 Object Detection (Fast)
-Trained On: Automatic from SAM3
-Test Set mAP@50: 94.8%
-Weight Location: model_weights/ear_localization/weights.pt
