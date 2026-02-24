@@ -8,14 +8,21 @@ from typing import Literal
 import numpy as np
 from inference_sdk import InferenceHTTPClient
 
-CLIENT = InferenceHTTPClient(
-    api_url="https://serverless.roboflow.com",
-    api_key=os.getenv("ROBOFLOW_API_KEY"),
-)
-
 WORKSPACE_NAME = "elephant-re-id"
 WORKFLOW_ID = "sam3"
 BATCH_SIZE = 8
+
+_client: InferenceHTTPClient | None = None
+
+
+def _get_client() -> InferenceHTTPClient:
+    global _client
+    if _client is None:
+        _client = InferenceHTTPClient(
+            api_url="https://serverless.roboflow.com",
+            api_key=os.getenv("ROBOFLOW_API_KEY"),
+        )
+    return _client
 
 
 def segment_image(
@@ -25,7 +32,7 @@ def segment_image(
         force: bool = False
     ):
     """Segment an image using the SAM3 Roboflow workflow."""
-    response = CLIENT.run_workflow(
+    response = _get_client().run_workflow(
         workspace_name=WORKSPACE_NAME,
         workflow_id=WORKFLOW_ID,
         images={"image": image},
@@ -65,7 +72,7 @@ def segment_image_batch(
         images_dict = {f"image{i}": img for i, img in enumerate(batch_images)}
         params_dict = {f"query{i}": q for i, q in enumerate(batch_queries)}
 
-        response = CLIENT.run_workflow(
+        response = _get_client().run_workflow(
             workspace_name=WORKSPACE_NAME,
             workflow_id=WORKFLOW_ID,
             images=images_dict,

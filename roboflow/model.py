@@ -8,19 +8,25 @@ import numpy as np
 from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 
 
-def _make_client(
+_client_cache: dict[tuple[float, float], InferenceHTTPClient] = {}
+
+
+def _get_client(
     confidence: float = 0.5,
     iou: float = 0.5,
 ) -> InferenceHTTPClient:
-    client = InferenceHTTPClient(
-        api_url="https://outline.roboflow.com",
-        api_key=os.getenv("ROBOFLOW_API_KEY"),
-    )
-    client.configure(InferenceConfiguration(
-        confidence_threshold=confidence,
-        iou_threshold=iou,
-    ))
-    return client
+    key = (confidence, iou)
+    if key not in _client_cache:
+        client = InferenceHTTPClient(
+            api_url="https://outline.roboflow.com",
+            api_key=os.getenv("ROBOFLOW_API_KEY"),
+        )
+        client.configure(InferenceConfiguration(
+            confidence_threshold=confidence,
+            iou_threshold=iou,
+        ))
+        _client_cache[key] = client
+    return _client_cache[key]
 
 
 def infer(
@@ -40,7 +46,7 @@ def infer(
     Returns:
         List of prediction dicts from the model.
     """
-    client = _make_client(confidence, iou)
+    client = _get_client(confidence, iou)
     response = client.infer(image, model_id=model_id)
     return response["predictions"]
 
@@ -62,7 +68,7 @@ def infer_batch(
     Returns:
         List of prediction lists, one per input image.
     """
-    client = _make_client(confidence, iou)
+    client = _get_client(confidence, iou)
     results = []
     for image in images:
         response = client.infer(image, model_id=model_id)
