@@ -28,7 +28,6 @@ def _get_client() -> InferenceHTTPClient:
 def segment_image(
         image: np.ndarray | str,
         query: str,
-        output_type: Literal["rle", "polygon"],
         force: bool = False
     ):
     """Segment an image using the SAM3 Roboflow workflow."""

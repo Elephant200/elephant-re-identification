@@ -107,7 +107,7 @@ def _annotate_with_sam3(
         image_id = image_index + 1
 
         try:
-            response = segment_image(image_path, class_name, output_type="rle")
+            response = segment_image(image_path, class_name)
 
             images_list.append({
                 "id": image_id,
