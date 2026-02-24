@@ -1,9 +1,9 @@
 """
-Auto-annotate images using pretrained models and output COCO-format JSON.
+Auto-annotate images for a single class and output COCO-format JSON.
 
 Supports two model backends:
   - "sam3": prompt-based segmentation via the SAM3 Roboflow workflow.
-    Each category name is used directly as the SAM3 query prompt.
+    The class name is used directly as the SAM3 query prompt.
   - Any other model string (e.g. "model_name/5"): treated as a Roboflow-
     hosted model ID, accessed via the InferenceHTTPClient.
 """
@@ -14,6 +14,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+import PIL
+import PIL.Image
 import cv2
 from pycocotools import mask as mask_util
 from tqdm import tqdm
@@ -47,15 +49,12 @@ def _center_to_topleft(x: float, y: float, w: float, h: float) -> list[float]:
 
 def _make_image_entry(image_path: str, image_id: int) -> dict | None:
     """Build a COCO ``images`` entry by reading the file for its dimensions."""
-    img = cv2.imread(image_path)
-    if img is None:
-        return None
-    h, w = img.shape[:2]
+    shape = PIL.Image.open(image_path).size
     return {
         "id": image_id,
         "file_name": os.path.basename(image_path),
-        "width": w,
-        "height": h,
+        "width": shape[0],
+        "height": shape[1],
     }
 
 
@@ -90,14 +89,14 @@ def _polygon_to_rle(points: list[dict], height: int, width: int) -> dict:
 
 def _annotate_with_sam3(
     image_paths: list[str],
-    categories: list[dict],
+    class_name: str,
 ) -> tuple[list[dict], list[dict]]:
-    """Run SAM3 on every image for each category and collect COCO entries.
+    """Run SAM3 on every image and collect COCO entries.
 
-    SAM3 uses the category name directly as its text query prompt.
-    Predictions always include RLE segmentation masks.
+    The *class_name* is used directly as the SAM3 text query prompt.
+    Response format: {"image": {"width": int, "height": int},
+                      "predictions": [{"x", "y", "width", "height", "rle_mask", ...}]}
     """
-    category_name_to_id = {c["name"]: c["id"] for c in categories}
     images_list: list[dict] = []
     annotations: list[dict] = []
     annotation_id = 1
@@ -106,74 +105,32 @@ def _annotate_with_sam3(
     progress = tqdm(image_paths, desc="SAM3", unit="img")
     for image_index, image_path in enumerate(progress):
         image_id = image_index + 1
-        image_entry_added = False
-        image_annotation_count = 0
 
         try:
-            # Query SAM3 once per category (category name = query prompt)
-            for category_name, category_id in category_name_to_id.items():
-                response = segment_image(
-                    image_path, category_name, output_type="rle",
+            response = segment_image(image_path, class_name, output_type="rle")
+
+            images_list.append({
+                "id": image_id,
+                "file_name": os.path.basename(image_path),
+                "width": response["image"]["width"],
+                "height": response["image"]["height"],
+            })
+
+            for prediction in response["predictions"]:
+                bbox = _center_to_topleft(
+                    prediction["x"], prediction["y"],
+                    prediction["width"], prediction["height"],
                 )
-                # segment_image returns {"image": {...}, "predictions": [...]}
-                predictions = response.get("predictions", [])
-
-                # Build image entry from the API response dimensions
-                # (avoids reading the file with cv2 just for width/height)
-                if not image_entry_added and "image" in response:
-                    images_list.append({
-                        "id": image_id,
-                        "file_name": os.path.basename(image_path),
-                        "width": response["image"]["width"],
-                        "height": response["image"]["height"],
-                    })
-                    image_entry_added = True
-
-                for prediction in predictions:
-                    has_rle = "rle_mask" in prediction
-                    has_bbox = all(
-                        k in prediction
-                        for k in ("x", "y", "width", "height")
-                    )
-                    if not has_rle and not has_bbox:
-                        continue
-
-                    # Use the bbox from the prediction when available;
-                    # only fall back to deriving it from the RLE mask
-                    if has_bbox:
-                        bbox = _center_to_topleft(
-                            prediction["x"], prediction["y"],
-                            prediction["width"], prediction["height"],
-                        )
-                        area = prediction["width"] * prediction["height"]
-                    else:
-                        rle = prediction["rle_mask"]
-                        bbox = mask_util.toBbox(rle).tolist()
-                        area = float(mask_util.area(rle))
-
-                    annotation: dict = {
-                        "id": annotation_id,
-                        "image_id": image_id,
-                        "category_id": category_id,
-                        "bbox": bbox,
-                        "area": area,
-                        "iscrowd": 0,
-                    }
-
-                    if has_rle:
-                        annotation["segmentation"] = _rle_to_json_safe(
-                            prediction["rle_mask"],
-                        )
-
-                    annotations.append(annotation)
-                    annotation_id += 1
-                    image_annotation_count += 1
-
-            # Fallback: read dimensions from file if the API didn't provide them
-            if not image_entry_added:
-                image_entry = _make_image_entry(image_path, image_id)
-                if image_entry is not None:
-                    images_list.append(image_entry)
+                annotations.append({
+                    "id": annotation_id,
+                    "image_id": image_id,
+                    "category_id": 1,
+                    "bbox": bbox,
+                    "area": prediction["width"] * prediction["height"],
+                    "iscrowd": 0,
+                    "segmentation": _rle_to_json_safe(prediction["rle_mask"]),
+                })
+                annotation_id += 1
 
         except Exception:
             errors += 1
@@ -192,16 +149,15 @@ def _annotate_with_sam3(
 def _annotate_with_roboflow_model(
     image_paths: list[str],
     model_id: str,
-    categories: list[dict],
+    class_name: str,
     confidence: float,
     iou: float,
 ) -> tuple[list[dict], list[dict]]:
     """Run a Roboflow-hosted model on every image and collect COCO entries.
 
-    Predictions are filtered to only include classes listed in *categories*.
+    Predictions are filtered to only include the requested *class_name*.
     If the model returns polygon segmentation data, it is converted to RLE.
     """
-    category_name_to_id = {c["name"]: c["id"] for c in categories}
     images_list: list[dict] = []
     annotations: list[dict] = []
     annotation_id = 1
@@ -225,15 +181,8 @@ def _annotate_with_roboflow_model(
             )
 
             for prediction in predictions:
-                # Match prediction class to a requested category
-                class_name = prediction.get("class", prediction.get("class_name"))
-                if class_name not in category_name_to_id:
-                    continue
-
-                # Every prediction must have a bounding box
-                if not all(
-                    k in prediction for k in ("x", "y", "width", "height")
-                ):
+                pred_class = prediction["class"]
+                if pred_class != class_name:
                     continue
 
                 bbox = _center_to_topleft(
@@ -241,11 +190,10 @@ def _annotate_with_roboflow_model(
                     prediction["width"], prediction["height"],
                 )
 
-                # Area comes directly from the prediction's bbox dimensions
                 annotation: dict = {
                     "id": annotation_id,
                     "image_id": image_id,
-                    "category_id": category_name_to_id[class_name],
+                    "category_id": 1,
                     "bbox": bbox,
                     "area": prediction["width"] * prediction["height"],
                     "iscrowd": 0,
@@ -278,7 +226,7 @@ def distill(
     image_dir: str,
     output_path: str,
     model: str,
-    classes: list[str],
+    class_name: str,
     *,
     confidence: float = 0.5,
     iou: float = 0.5,
@@ -291,28 +239,24 @@ def distill(
         model: Model to use. Pass ``"sam3"`` for the SAM3 segmentation
             workflow, or a Roboflow model ID (e.g. ``"model_name/5"``)
             for a hosted model.
-        classes: Category names for the output dataset. For SAM3, each
-            name doubles as the query prompt sent to the model.
+        class_name: Category name for the output dataset. For SAM3 this
+            also serves as the query prompt sent to the model.
         confidence: (Roboflow models only) Minimum confidence threshold.
         iou: (Roboflow models only) IoU threshold for NMS.
     """
     image_paths = _scan_images(image_dir)
     logger.info("Found %d images in %s", len(image_paths), image_dir)
 
-    # Build COCO categories list
-    categories = [
-        {"id": i + 1, "name": name, "supercategory": ""}
-        for i, name in enumerate(classes)
-    ]
+    categories = [{"id": 1, "name": class_name, "supercategory": ""}]
 
     # Dispatch to the appropriate backend
     if model == "sam3":
         images_list, annotations = _annotate_with_sam3(
-            image_paths, categories,
+            image_paths, class_name,
         )
     else:
         images_list, annotations = _annotate_with_roboflow_model(
-            image_paths, model, categories, confidence, iou,
+            image_paths, model, class_name, confidence, iou,
         )
 
     # Assemble the full COCO dataset structure
@@ -347,41 +291,4 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s: %(message)s",
-    )
-
-    parser = argparse.ArgumentParser(
-        description="Auto-annotate images using a pretrained model.",
-    )
-    parser.add_argument(
-        "image_dir",
-        help="Directory containing images to annotate.",
-    )
-    parser.add_argument(
-        "model",
-        help='Model to use: "sam3" or a Roboflow model ID (e.g. "model_name/5").',
-    )
-    parser.add_argument(
-        "classes",
-        nargs="+",
-        help="Category names for the output dataset.",
-    )
-    parser.add_argument(
-        "--confidence", type=float, default=0.5,
-        help="(Roboflow models only) Minimum confidence threshold (default: 0.5).",
-    )
-    parser.add_argument(
-        "--iou", type=float, default=0.5,
-        help="(Roboflow models only) IoU threshold for NMS (default: 0.5).",
-    )
-
-    args = parser.parse_args()
-    output_path = os.path.join(args.image_dir, "annotations.coco.json")
-
-    distill(
-        image_dir=args.image_dir,
-        output_path=output_path,
-        model=args.model,
-        classes=args.classes,
-        confidence=args.confidence,
-        iou=args.iou,
     )
