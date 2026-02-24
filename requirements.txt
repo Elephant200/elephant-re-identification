@@ -4,6 +4,7 @@ torch
 torchvision
 rembg[cpu,cli]
 pycocotools
+tqdm
 
 inference
 inference-sdk
