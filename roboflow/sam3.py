@@ -64,6 +64,7 @@ def segment_image_batch(
     total = len(images)
     results = []
 
+    client = _get_client()
     for start in range(0, total, BATCH_SIZE):
         batch_images = images[start:start + BATCH_SIZE]
         batch_queries = queries[start:start + BATCH_SIZE]
@@ -71,7 +72,7 @@ def segment_image_batch(
         images_dict = {f"image{i}": img for i, img in enumerate(batch_images)}
         params_dict = {f"query{i}": q for i, q in enumerate(batch_queries)}
 
-        response = _get_client().run_workflow(
+        response = client.run_workflow(
             workspace_name=WORKSPACE_NAME,
             workflow_id=WORKFLOW_ID,
             images=images_dict,
