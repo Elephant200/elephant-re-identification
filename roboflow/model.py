@@ -1,5 +1,7 @@
 """
 Module wrapping fine-tuned Roboflow-hosted models through InferenceHTTPClient.
+
+TODO: Currently untested. Make sure to test the batch inference.
 """
 
 import os
@@ -69,8 +71,18 @@ def infer_batch(
         List of prediction lists, one per input image.
     """
     client = _get_client(confidence, iou)
-    results = []
-    for image in images:
-        response = client.infer(image, model_id=model_id)
-        results.append(response["predictions"])
-    return results
+    response = client.infer(images, model_id=model_id)
+    return [r["predictions"] for r in response]
+
+if __name__ == "__main__":
+    images = [
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/373_Ariel II left_Feb2011.jpg",
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/579_BHE II leftside_Nov2010.jpg",
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/579_BHE II_Feb2011.jpg",
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/669_Britt I leftside_Apr2011.jpg",
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/736_Carissa I right_Nov2010.jpg",
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/736_Carissa I rightside_Nov2010.jpg",
+        "/Users/kayoko/Documents/GitHub/elephant-re-identification/dataset/sample/992_Cybele I front_Apr2011.jpg",
+    ]
+    predictions = infer_batch(images, "elephant-re-id/tusks")
+    print(predictions)
