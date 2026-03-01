@@ -60,14 +60,18 @@ def segment_image_batch(
     if len(images) != len(queries):
         raise ValueError("Images and queries must have the same length")
 
-    total = len(images)
     results = []
 
     client = _get_client()
-    progress = tqdm(total=total, desc="SAM3", unit="img")
-    for start in range(0, total, BATCH_SIZE):
+    progress = tqdm(total=len(images), desc="SAM3", unit="img")
+    for start in range(0, len(images), BATCH_SIZE):
         batch_images = images[start:start + BATCH_SIZE]
         batch_queries = queries[start:start + BATCH_SIZE]
+        
+        # pad with empty images if necessary
+        if len(batch_images) < BATCH_SIZE:
+            batch_images.extend([np.zeros((5, 5, 3), dtype=np.uint8)] * (BATCH_SIZE - len(batch_images)))
+            batch_queries.extend([""] * (BATCH_SIZE - len(batch_queries)))
 
         images_dict = {f"image{i}": img for i, img in enumerate(batch_images)}
         params_dict = {f"query{i}": q for i, q in enumerate(batch_queries)}
@@ -85,6 +89,10 @@ def segment_image_batch(
 
         progress.update(len(batch_images))
     progress.close()
+
+    # remove results corresponding to empty images
+    results = results[:len(images)]
+    
 
     assert len(results) == len(images)
     return results
