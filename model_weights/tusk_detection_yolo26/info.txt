@@ -1,0 +1,6 @@
+Type: YOLO26 Object Detection (Fast)
+Trained On: SAM3 All ELPephants
+Dataset Size: 2050
+Test Set mAP@50: 86.6%
+Optimal Confidence Threshold: 51%
+Weight Location: model_weights/tusk_detection_yolo26/weights.pt
