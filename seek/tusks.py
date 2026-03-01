@@ -2,16 +2,18 @@
 Generates tusk part of SEEK code
 """
 
+from typing import Literal
 import numpy as np
 
 from roboflow.model import infer
 
-def get_tusk_code(elephant_image: np.ndarray) -> str:
+def get_tusk_code(elephant_image: np.ndarray, view: Literal["front", "left", "right", "back"]) -> str:
     """
     Generate the tusk segment of the SEEK code from an input elephant image.
 
     Args:
         elephant_image (np.ndarray): An image of one elephant; background not removed.
+        view (Literal["front", "left", "right", "back"]): The view of the elephant.
 
     Returns:
         A two-character string of zeroes and ones representing the tusk portion of the SEEK code.
@@ -21,11 +23,22 @@ def get_tusk_code(elephant_image: np.ndarray) -> str:
     if len(predictions) > 2:
         raise ValueError(f"Expected at most 2 tusk predictions, got {len(predictions)}")
     
-    match len(predictions):
-        case 0: # No tusks
-            return "00"
-        case 1: # Only one tusk is present
-            # TODO: Determine which tusk is left or right
-            return "__" # not sure which tusk is left or right
-        case 2: # Both tusks are present
-            return "11"
+    if len(predictions) == 0:
+        return "00"
+    
+    if len(predictions) == 1:
+        if view == "front":
+            return "__"
+        elif view == "left":
+            return "01"
+        elif view == "right":
+            return "10"
+        elif view == "back":
+            return "__"
+    
+    if len(predictions) == 2:
+        return "11"
+    
+    if len(predictions) > 2:
+        print("Found more than 2 tusks")
+        return "11"

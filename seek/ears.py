@@ -7,6 +7,22 @@ import numpy as np
 
 from roboflow.model import infer
 
+def get_ear_contour(elephant_image: np.ndarray) -> np.ndarray:
+    """
+    Generate the ear contour from an input elephant image.
+
+    Args:
+        elephant_image (np.ndarray): An image of one elephant; no 
+            background removal required.
+
+    Returns:
+        A numpy array representing the ear contour.
+    """
+    predictions: list[dict] = infer(elephant_image, "elephant-re-id/ear-contour/1")
+    for prediction in predictions:
+        pass
+    
+
 def get_ears_code(elephant_image: np.ndarray) -> Tuple[str, str, str, str]:
     """
     Generate the ears, extreme features, and special features segments 
