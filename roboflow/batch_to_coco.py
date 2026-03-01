@@ -22,7 +22,7 @@ def _center_to_topleft(x: float, y: float, w: float, h: float) -> list[float]:
     return [x - w / 2, y - h / 2, w, h]
 
 
-def batch_to_coco(image_dir: str, clean: bool = False) -> dict:
+def batch_to_coco(image_dir: str, clean: bool = False, include_blank: bool = True) -> dict:
     """
     Convert an "aggregated results" CSV from Roboflow Batch Processing API to COCO JSON.
 
@@ -48,6 +48,10 @@ def batch_to_coco(image_dir: str, clean: bool = False) -> dict:
         file_name = row["image"]
         response = json.loads(row["predictions"])
 
+        preds = response["predictions"]
+        if not include_blank and len(preds) == 0:
+            continue
+
         images_list.append({
             "id": image_id,
             "file_name": file_name,
@@ -55,7 +59,7 @@ def batch_to_coco(image_dir: str, clean: bool = False) -> dict:
             "height": response["image"]["height"],
         })
 
-        for pred in response["predictions"]:
+        for pred in preds:
             cat_id = pred["class_id"] + 1
             if cat_id not in category_map:
                 category_map[cat_id] = pred["class"]
@@ -122,5 +126,10 @@ if __name__ == "__main__":
         action="store_true",
         help="Delete the input CSV after conversion",
     )
+    parser.add_argument(
+        "--exclude-blank",
+        action="store_true",
+        help="Exclude images with no predictions (by default they are included)",
+    )
     args = parser.parse_args()
-    batch_to_coco(args.image_dir, args.clean)
+    batch_to_coco(args.image_dir, args.clean, include_blank=not args.exclude_blank)
