@@ -30,9 +30,9 @@ def get_tusk_code(elephant_image: np.ndarray, view: Literal["front", "left", "ri
         if view == "front":
             return "__"
         elif view == "left":
-            return "01"
-        elif view == "right":
             return "10"
+        elif view == "right":
+            return "01"
         elif view == "back":
             return "__"
     
