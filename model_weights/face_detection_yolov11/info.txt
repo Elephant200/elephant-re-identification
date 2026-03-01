@@ -3,4 +3,4 @@ Trained On: Hand-Annotated
 Dataset Size: 574
 Test Set mAP@50: 95.5%
 Optimal Confidence Threshold: 67%
-Weight Location: model_weights/face_localization_yolov11/weights.pt
+Weight Location: model_weights/face_detection_yolov11/weights.pt

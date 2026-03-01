@@ -3,4 +3,4 @@ Trained On: SAM3 All ELPephants
 Dataset Size: 2048
 Test Set mAP@50: 94.8%
 Optimal Confidence Threshold: 26%
-Weight Location: model_weights/ear_localization_yolo26/weights.pt
+Weight Location: model_weights/ear_detection_yolo26/weights.pt
