@@ -23,8 +23,8 @@ def remove_background(image: np.ndarray) -> np.ndarray:
         The image with background pixels zeroed out.
     """
     response = BG_CLIENT.run_workflow(
-        workspace_name="elephantidentificationresearch",
-        workflow_id="sam3-with-prompts",
+        workspace_name="elephant-re-id",
+        workflow_id="remove-bg",
         images={"image": image},
         use_cache=True,
     )
