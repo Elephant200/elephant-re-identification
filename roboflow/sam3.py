@@ -7,9 +7,8 @@ from typing import Literal
 
 import numpy as np
 from inference_sdk import InferenceHTTPClient
+from tqdm import tqdm
 
-WORKSPACE_NAME = "elephant-re-id"
-WORKFLOW_ID = "sam3"
 BATCH_SIZE = 8
 
 _client: InferenceHTTPClient | None = None
@@ -32,8 +31,8 @@ def segment_image(
     ):
     """Segment an image using the SAM3 Roboflow workflow."""
     response = _get_client().run_workflow(
-        workspace_name=WORKSPACE_NAME,
-        workflow_id=WORKFLOW_ID,
+        workspace_name="elephantidentificationresearch",
+        workflow_id="sam3",
         images={"image": image},
         parameters={"query": query},
         use_cache=not force,
@@ -65,6 +64,7 @@ def segment_image_batch(
     results = []
 
     client = _get_client()
+    progress = tqdm(total=total, desc="SAM3", unit="img")
     for start in range(0, total, BATCH_SIZE):
         batch_images = images[start:start + BATCH_SIZE]
         batch_queries = queries[start:start + BATCH_SIZE]
@@ -73,15 +73,18 @@ def segment_image_batch(
         params_dict = {f"query{i}": q for i, q in enumerate(batch_queries)}
 
         response = client.run_workflow(
-            workspace_name=WORKSPACE_NAME,
-            workflow_id=WORKFLOW_ID,
+            workspace_name="elephantidentificationresearch",
+            workflow_id="sam3-batch-8",
             images=images_dict,
             parameters=params_dict,
             use_cache=not force,
         )
 
         for key in sorted(response[0]):
-            results.append(response[0][key]["predictions"])
+            results.append(response[0][key])
+
+        progress.update(len(batch_images))
+    progress.close()
 
     assert len(results) == len(images)
     return results
