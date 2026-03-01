@@ -9,3 +9,4 @@ tqdm
 inference
 inference-sdk
 roboflow
+ultralytics
