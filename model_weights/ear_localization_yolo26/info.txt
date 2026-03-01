@@ -1,5 +1,5 @@
 Type: YOLO26 Object Detection (Fast)
-Trained On: Automatic from SAM3
+Trained On: SAM3 All ELPephants
 Dataset Size: 2048
 Test Set mAP@50: 94.8%
 Optimal Confidence Threshold: 26%
