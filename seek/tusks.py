@@ -14,7 +14,7 @@ def get_tusk_code(elephant_image: np.ndarray) -> str:
         elephant_image (np.ndarray): An image of one elephant; background not removed.
 
     Returns:
-        A two-character string of zeroes and ones representing the gender portion of the SEEK code.
+        A two-character string of zeroes and ones representing the tusk portion of the SEEK code.
     """
     predictions = infer(elephant_image, "elephant-re-id/tusks")
 
