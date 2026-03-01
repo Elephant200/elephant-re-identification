@@ -238,7 +238,7 @@ def distill(
     categories = [{"id": 1, "name": class_name, "supercategory": ""}]
 
     # Dispatch to the appropriate backend
-    if model == "sam3":
+    if model == "sam3" or True:
         images_list, annotations = _annotate_with_sam3(
             image_paths, class_name,
         )
