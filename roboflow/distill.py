@@ -16,11 +16,10 @@ from pathlib import Path
 
 import PIL
 import PIL.Image
-import cv2
 from pycocotools import mask as mask_util
 from tqdm import tqdm
 
-from roboflow.sam3 import segment_image
+from roboflow.sam3 import segment_image_batch
 from roboflow.model import infer
 
 logger = logging.getLogger(__name__)
@@ -97,49 +96,38 @@ def _annotate_with_sam3(
     Response format: {"image": {"width": int, "height": int},
                       "predictions": [{"x", "y", "width", "height", "rle_mask", ...}]}
     """
+    queries = [class_name] * len(image_paths)
+    responses = segment_image_batch(image_paths, queries)
+
     images_list: list[dict] = []
     annotations: list[dict] = []
     annotation_id = 1
-    errors = 0
 
-    progress = tqdm(image_paths, desc="SAM3", unit="img")
-    for image_index, image_path in enumerate(progress):
+    for image_index, (image_path, response) in enumerate(zip(image_paths, responses)):
         image_id = image_index + 1
 
-        try:
-            response = segment_image(image_path, class_name)
+        images_list.append({
+            "id": image_id,
+            "file_name": os.path.basename(image_path),
+            "width": response["image"]["width"],
+            "height": response["image"]["height"],
+        })
 
-            images_list.append({
-                "id": image_id,
-                "file_name": os.path.basename(image_path),
-                "width": response["image"]["width"],
-                "height": response["image"]["height"],
+        for prediction in response["predictions"]:
+            bbox = _center_to_topleft(
+                prediction["x"], prediction["y"],
+                prediction["width"], prediction["height"],
+            )
+            annotations.append({
+                "id": annotation_id,
+                "image_id": image_id,
+                "category_id": 1,
+                "bbox": bbox,
+                "area": prediction["width"] * prediction["height"],
+                "iscrowd": 0,
+                "segmentation": _rle_to_json_safe(prediction["rle_mask"]),
             })
-
-            for prediction in response["predictions"]:
-                bbox = _center_to_topleft(
-                    prediction["x"], prediction["y"],
-                    prediction["width"], prediction["height"],
-                )
-                annotations.append({
-                    "id": annotation_id,
-                    "image_id": image_id,
-                    "category_id": 1,
-                    "bbox": bbox,
-                    "area": prediction["width"] * prediction["height"],
-                    "iscrowd": 0,
-                    "segmentation": _rle_to_json_safe(prediction["rle_mask"]),
-                })
-                annotation_id += 1
-
-        except Exception:
-            errors += 1
-            logger.exception("Failed to annotate %s", os.path.basename(image_path))
-
-        progress.set_postfix(annotations=len(annotations), errors=errors)
-
-    if errors:
-        logger.warning("Skipped %d images due to errors", errors)
+            annotation_id += 1
 
     return images_list, annotations
 
@@ -291,4 +279,27 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(levelname)s: %(message)s",
+    )
+
+    parser = argparse.ArgumentParser(
+        description="Auto-annotate images and output COCO-format JSON.",
+    )
+    parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
+    parser.add_argument("image_dir", help="Directory of images to annotate")
+    parser.add_argument("class_name", help="Category name (also the SAM3 query prompt)")
+    parser.add_argument("--model", default="sam3", help='Model backend: "sam3" or a Roboflow model ID (e.g. "model/5")')
+    parser.add_argument("--output", default=None, help="Output JSON path")
+    parser.add_argument("--confidence", type=float, default=0.5, help="Confidence threshold")
+    parser.add_argument("--iou", type=float, default=0.5, help="IoU threshold for NMS")
+    args = parser.parse_args()
+
+    output = args.output or os.path.join(args.image_dir, "annotations.json")
+
+    distill(
+        image_dir=args.image_dir,
+        output_path=output,
+        model=args.model,
+        class_name=args.class_name,
+        confidence=args.confidence,
+        iou=args.iou,
     )
