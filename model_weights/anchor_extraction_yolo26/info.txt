@@ -1,0 +1,7 @@
+Type: YOLO26 Keypoint Detection (Fast)
+Trained On: Partially Hand-Annotated images of cropped elephant ears
+Dataset Size: 1375
+Test Set mAP@50: 96.8%
+Weight Location: model_weights/anchor_extraction_yolo26/weights.pt
+
+Qualitative Results: Extremely accurate model. Most "mistakes" are actually on the part of the data, not the model. Thus, the actual accuracy is higher than 96.8% mAP
