@@ -1,0 +1,6 @@
+Type: YOLO26 Instance Segmentation (Accurate)
+Trained On: Partially Hand-Annotated; Partially SAM3
+Dataset Size: 2240
+Test Set mAP@50: 94.9%
+Optimal Confidence Threshold: 62%
+Weight Location: model_weights/ear_segmentation_yolo26/weights.pt
