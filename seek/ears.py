@@ -5,7 +5,7 @@ Generates ears, extreme features, and special features parts of SEEK code
 from typing import Tuple
 import numpy as np
 
-from roboflow.model import infer
+from vision.model import infer
 
 def get_ear_contour(elephant_image: np.ndarray) -> np.ndarray:
     """

@@ -5,7 +5,7 @@ Generates a SEEK code for one elephant
 import numpy as np
 
 from preprocess.background import remove_background
-from roboflow.model import infer
+from vision.model import infer
 from seek.gender import get_gender_code
 from seek.age import get_age_code
 from seek.tusks import get_tusk_code

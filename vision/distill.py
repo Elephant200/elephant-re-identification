@@ -19,8 +19,8 @@ import PIL.Image
 from pycocotools import mask as mask_util
 from tqdm import tqdm
 
-from roboflow.sam3 import segment_image_batch
-from roboflow.model import infer
+from vision.sam3 import segment_image_batch
+from vision.model import infer
 
 logger = logging.getLogger(__name__)
 

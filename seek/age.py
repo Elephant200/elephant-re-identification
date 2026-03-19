@@ -5,7 +5,7 @@ Generates age part of SEEK code
 from datetime import datetime
 import numpy as np
 
-from roboflow.model import infer
+from vision.model import infer
 
 def get_age_code(elephant_image: np.ndarray) -> str:
     """

@@ -5,7 +5,7 @@ Generates tusk part of SEEK code
 from typing import Literal
 import numpy as np
 
-from roboflow.model import infer
+from vision.model import infer
 
 def get_tusk_code(elephant_image: np.ndarray, view: Literal["front", "left", "right", "back"]) -> str:
     """

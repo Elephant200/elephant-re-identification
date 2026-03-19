@@ -5,7 +5,7 @@ Generates gender part of SEEK code
 from typing import Literal
 import numpy as np
 
-from roboflow.model import infer
+from vision.model import infer
 
 def get_gender_code(elephant_image: np.ndarray) -> Literal["B", "C"]:
     """
