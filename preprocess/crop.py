@@ -64,7 +64,7 @@ def crop_elephants_from_roboflow(
         largest_only: If True, keep only the largest detection per image.
                       If False, keep all detections ranked by area.
     """
-    from roboflow.model import infer
+    from vision.model import infer
 
     os.makedirs(output_directory, exist_ok=True)
 
