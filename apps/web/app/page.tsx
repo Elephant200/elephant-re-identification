@@ -164,7 +164,7 @@ export default function Home() {
 
       {/* Hero */}
       <section className="pt-32 pb-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2d5a27]/5 via-transparent to-[#c4961f]/5 pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-br from-[#2d5a27]/5 via-transparent to-[#c4961f]/5 pointer-events-none" />
         <div className="max-w-4xl mx-auto text-center relative">
           <div className="inline-flex items-center gap-2 bg-[#2d5a27]/10 border border-[#2d5a27]/20 rounded-full px-4 py-1.5 mb-8">
             <span className="w-1.5 h-1.5 bg-[#2d5a27] rounded-full" />
@@ -493,7 +493,7 @@ export default function Home() {
       {/* CTA */}
       <section
         id="contact"
-        className="py-24 px-6 bg-gradient-to-br from-[#1a3517] to-[#2d5a27]"
+        className="py-24 px-6 bg-linear-to-br from-[#1a3517] to-[#2d5a27]"
       >
         <div className="max-w-2xl mx-auto text-center">
           <div className="text-[#c4961f] text-sm font-medium uppercase tracking-widest mb-4">
