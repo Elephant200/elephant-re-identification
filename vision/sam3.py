@@ -19,23 +19,41 @@ def _get_client() -> InferenceHTTPClient:
     if _client is None:
         _client = InferenceHTTPClient(
             api_url="https://serverless.roboflow.com",
-            api_key=os.getenv("ROBOFLOW_API_KEY"),
+            api_key=os.getenv("SAM3_API_KEY"), # API key for SEEK Identification workspace
         )
     return _client
 
 
 def segment_image(
         image: np.ndarray | str,
-        query: str,
-        force: bool = False
+        queries: list[str] | str,
+        confidence_threshold: float = 0.5,
+        nms: bool = True,
+        nms_iou_threshold: float = 0.2,
     ):
-    """Segment an image using the SAM3 Roboflow workflow."""
+    """
+    Segment an image using the SAM3 Roboflow workflow.
+
+    Args:
+        image: The image to segment.
+        queries: The queries to use for segmentation. Can be a single string, a comma-separated string, or a list of strings.
+        confidence_threshold: The confidence threshold for the segmentation.
+        nms: Whether to use non-maximum suppression.
+        nms_iou_threshold: The IoU threshold for non-maximum suppression.
+    
+    Returns:
+        The predictions from the segmentation.
+    """
     response = _get_client().run_workflow(
-        workspace_name="elephantidentificationresearch",
+        workspace_name="seek-identification",
         workflow_id="sam3",
         images={"image": image},
-        parameters={"query": query},
-        use_cache=not force,
+        parameters={
+            "queries": queries if isinstance(queries, str) else ", ".join(queries),
+            "confidence_threshold": confidence_threshold,
+            "nms": nms,
+            "nms_iou_threshold": nms_iou_threshold,
+            },
     )
     return response[0]["predictions"]
 
