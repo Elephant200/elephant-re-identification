@@ -55,7 +55,7 @@ def segment_image(
             "nms_iou_threshold": nms_iou_threshold,
             },
     )
-    return response[0]["predictions"]
+    return response[0]["predictions"]["predictions"]
 
 
 def segment_image_batch(
