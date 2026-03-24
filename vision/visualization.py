@@ -52,14 +52,10 @@ def _center_to_corners(
 
 def visualize_predictions(
     image: np.ndarray,
-    prediction_response: dict[str, Any],
+    predictions: list[dict],
     mask_alpha: float = 0.35,
 ) -> np.ndarray:
     """Draw detections (RLE masks + boxes + labels) on an image."""
-    if "predictions" not in prediction_response:
-        raise KeyError("Expected a dict with a 'predictions' key.")
-
-    predictions = prediction_response["predictions"]
     output = image.copy()
     image_height, image_width = output.shape[:2]
 
