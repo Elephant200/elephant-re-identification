@@ -4,13 +4,13 @@ AlphaPhant is a fully automated candidate-ranking algorithm for elephant re-iden
 
 ## Documentation
 
-- [Current status](docs/status.md) — working numerical core, structural debt, and preservation boundaries.
+- [Current status](docs/status.md) — current project state and next steps.
 - [Pipeline](docs/pipeline.md) — research algorithm behavior and verification boundary.
 - [Evaluation](docs/evaluation.md) — identity-retrieval benchmark protocol.
 - [Architecture](docs/architecture.md) — module responsibilities, data flow, inference seams, and caching.
 - [Context](docs/context.md) — canonical domain vocabulary.
 - [Workflow](docs/workflow.md) — future application surrounding the research pipeline.
-- [Future research](docs/future.md) — directions beyond the locked pipeline.
+- [Future research](docs/future.md) — deferred research directions.
 - [ADRs](docs/adr/) — durable architectural decisions.
 
 ## Development

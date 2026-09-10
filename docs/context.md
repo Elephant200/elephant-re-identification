@@ -136,6 +136,13 @@ _Avoid_: Identity decision, prediction
 
 ## Evaluation
 
+**Curation splits**:
+The benchmark, tuning, and model groups of elephant identities. Every sighting and photo of an assigned elephant belongs to the same group, although only selected evidence is used. An elephant without an assignment belongs to none of the three.
+
+**Photo quality grade**:
+A retained assessment of a photo's visible ear evidence, with independent grades for each assessed side and an image score reflecting its best ear. One good ear is sufficient; a poor opposite ear does not reduce its value. Grades are independent of curation split and reused when selections expand.
+_Avoid_: Retrieval score, identity confidence
+
 **Retrieval benchmark set**:
 The fixed private sample of real sighting ear pairs used to estimate expected retrieval performance beyond the benchmark itself. It contains one pair per sampled sighting and is held under the gitignored research dataset at `dataset/elephants-alive/benchmark/`; shorten to benchmark set in running writing.
 _Avoid_: Evaluation suite, test set
@@ -149,7 +156,7 @@ The identity-aware declaration of the benchmark set, with one row per selected s
 _Avoid_: Picker manifest, benchmark folders
 
 **Parameter-tuning set**:
-The image set used to compare AlphaPhant mechanisms and choose matching parameters. Its elephants are disjoint from the retrieval benchmark set. Extraction geometry changes require a separate mechanism and an immutable producer version.
+The set of sighting ear pairs used to compare AlphaPhant mechanisms and choose matching parameters. Its elephants are disjoint from both AI-model data and the retrieval benchmark set.
 _Avoid_: Validation set, training set, dev set
 
 **Tuning catalog A / tuning catalog B**:
@@ -157,7 +164,7 @@ Two catalogs formed from different elephants in the parameter-tuning set. Each h
 _Avoid_: Half A / Half B without explaining what was split
 
 **AI-model datasets**:
-The ear-segmentation and landmark models use their own train, validation, and test splits, drawn from singly-sighted elephants so they stay disjoint from all matching data. Those three terms name model data only; the AlphaPhant algorithm has no training phase and tunes its parameters on the parameter-tuning set.
+The localization, ear-segmentation, and landmark datasets contain individual photos, which need not form sighting ear pairs, from an elephant-identity cohort disjoint from tuning and retrieval evaluation. Train, validation, and test roles are identity-disjoint and shared across models; all photos from a sighting stay together. These split terms name model data only; AlphaPhant has no training phase.
 
 **Identity-retrieval evaluation**:
 End-to-end estimation of how a complete retrieval system ranks the correct known elephant for previously unseen elephants and sightings from the target deployment population. Point estimates are unweighted over eligible queries; for uncertainty, elephants are the independent sampling unit and their sightings are nested observations.

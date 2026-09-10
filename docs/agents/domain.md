@@ -8,7 +8,7 @@ This is a single-context repo. There is no root `CONTEXT.md` or `CONTEXT-MAP.md`
 
 - **Naming** — `docs/context.md`. Prefer its terms; do not drift to synonyms the glossary explicitly avoids.
 - **Durable decisions** — `docs/adr/` entries that touch the area you're about to work in.
-- **Which other top-level doc** — follow the Start Here pointers in `AGENTS.md` / `CLAUDE.md` (`architecture.md`, `pipeline.md`, `evaluation.md`, `status.md`, `future.md`, `reference/`).
+- **Which other top-level doc** — follow the conditional Start Here pointers in `AGENTS.md` / `CLAUDE.md`.
 
 If a concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
 
@@ -20,8 +20,8 @@ docs/
 ├── architecture.md
 ├── pipeline.md
 ├── evaluation.md
-├── status.md
-├── future.md
+├── status.md        ← current state and next steps
+├── future.md        ← deferred research; consult only when relevant
 ├── adr/
 ├── reference/       ← historical and forward-looking detail
 └── agents/

@@ -1,23 +1,14 @@
-# Future Research
+# Future research
 
-This document records directions beyond the pipeline being locked down now. None are current implementation requirements.
+Deferred research directions. These are not current implementation requirements.
 
-## Additional Images
+## Inference refinements
 
-Pick additional high-quality sighting ear pairs for better tuning and accuracy estimates.
+Explore improved pose, visibility, or contour-quality estimation beyond the planned model training and image-selection work.
 
-## Better Preprocessing
+Replace shared `Detection` returns with typed ear-segmentation and ear-landmark results when revisiting the semantic inference interfaces in [architecture.md](architecture.md).
 
-The first priority is extraction repeatability. Candidate replacements for current inference include:
-
-- detector plus U-Net ear segmentation;
-- detector plus BiRefNet ear segmentation;
-- alternative ear-landmark networks;
-- improved pose, visibility, or contour-quality estimation.
-
-Each implementation should satisfy the semantic inference interfaces in [architecture.md](architecture.md). **After the current migration, replace shared `Detection` returns on those interfaces with typed ear-segmentation and ear-landmark results.** Model training and model-specific evaluation belong in dedicated training areas rather than the identity-retrieval evaluator.
-
-## Additional Identity Signals
+## Additional identity signals
 
 Tear profiles are interpretable but cannot represent every useful identity feature. Later research may investigate:
 
@@ -27,22 +18,22 @@ Tear profiles are interpretable but cannot represent every useful identity featu
 - holes when suitable annotations and segmentation exist;
 - tusk or body evidence when an experiment justifies reintroducing it.
 
-Additional signals should earn inclusion through separate evaluation. The current restructuring does not preserve speculative multi-signal abstractions.
+Additional signals should earn inclusion through separate evaluation.
 
-## Broader Retrieval
+## Broader retrieval
 
 Later work may explore:
 
 - one-sided queries;
 - open-set rejection for elephants absent from the catalog;
 - approximate retrieval for much larger catalogs;
-- identity- and time-aware fixed test sets;
+- temporal generalization across fixed observation periods;
 - uncertainty estimates across repeated sightings.
 
 These extensions should preserve the distinction between similarity-based candidate ranking and a final identity decision.
 
-## Application Research
+## Field application
 
-A future application must select an ear pair from all available sighting photos. That may combine automated quality heuristics, human review, and evidence correction. Once selected, the application uses the same opaque Photo and Sighting values, PhotoStore capability, and AlphaPhant analysis and matching pipeline as research; see [reference/application.md](reference/application.md).
+Extend research image selection into a field evidence-review and identity-decision workflow; see [reference/application.md](reference/application.md). The application should use the shared domain objects, PhotoStore, and AlphaPhant pipeline after ear selection.
 
 Application import may later add duplicate detection or content identity across external systems. Permanent opaque IDs and immutable original-photo semantics remain shared with the research system.

@@ -6,13 +6,12 @@ AlphaPhant is a fully automated catalog-matching algorithm for elephant re-ident
 
 ## Start Here
 
-- Current state or cleanup scope: read [docs/status.md](docs/status.md).
+- Exploring deferred research only: read [docs/future.md](docs/future.md).
 - Analysis or matching behavior: read [docs/pipeline.md](docs/pipeline.md).
 - Retrieval evaluation, splits, failures, or metrics: read [docs/evaluation.md](docs/evaluation.md).
 - Module placement, domain/storage boundaries, or caching: read [docs/architecture.md](docs/architecture.md).
 - Naming, domain or technical terms: read [docs/context.md](docs/context.md).
 - Future application work: read [docs/reference/application.md](docs/reference/application.md).
-- Later research ideas: read [docs/future.md](docs/future.md).
 - Surprising durable decisions: read [docs/adr/](docs/adr/).
 
 ## Commands
